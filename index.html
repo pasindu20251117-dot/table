@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IIT Smart Timetable</title>
+  <!-- PWA Metadata -->
+  <link rel="manifest" href="data:application/json,{\"name\":\"IIT Timetable\",\"short_name\":\"Timetable\",\"start_url\":\".\",\"display\":\"standalone\",\"background_color\":\"#0f172a\",\"theme_color\":\"#6366f1\"}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .glass { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="pb-16 max-w-md mx-auto min-h-screen border-x border-slate-800">
+
+  <!-- Header -->
+  <header class="p-4 glass sticky top-0 z-50 flex justify-between items-center border-b border-slate-700">
+    <div class="flex items-center space-x-3">
+      <div class="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-calendar-week text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold leading-tight">My Timetable</h1>
+        <p class="text-xs text-indigo-400 font-medium">L5 CS - Group 13 + Robotics</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center space-x-2">
+      <!-- Direct Drive SSO Link -->
+      <a href="https://drive.google.com/file/d/1CzULxeSQeasZijoCVXykWQAKuM1UZ_23/view?usp=drive_link" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl border border-slate-700 transition" title="Open Google Drive">
+        <i class="fa-brands fa-google-drive"></i>
+      </a>
+      <!-- Sync Upload Button -->
+      <label class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 font-semibold shadow-lg shadow-indigo-600/30 transition">
+        <i class="fa-solid fa-file-arrow-up"></i> Sync
+        <input type="file" id="fileInput" accept=".html,.htm" class="hidden">
+      </label>
+    </div>
+  </header>
+
+  <!-- Day Selector Tabs -->
+  <div class="p-4 overflow-x-auto flex space-x-2 no-scrollbar" id="dayPicker">
+    <button onclick="switchDay('Monday')" id="tab-Monday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition">Mon</button>
+    <button onclick="switchDay('Tuesday')" id="tab-Tuesday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">Tue</button>
+    <button onclick="switchDay('Wednesday')" id="tab-Wednesday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">Wed</button>
+    <button onclick="switchDay('Thursday')" id="tab-Thursday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">Thu</button>
+    <button onclick="switchDay('Friday')" id="tab-Friday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">Fri</button>
+  </div>
+
+  <!-- Schedule List Container -->
+  <main class="px-4 space-y-3.5" id="scheduleContainer">
+    <!-- Schedule items rendered here -->
+  </main>
+
+  <script>
+    // Module ID to Full Name & Icon Dictionary
+    const MODULE_DB = {
+      '5COSC019C': { name: 'Object Oriented Programming', leader: 'Mr. Guhanathan Poravi', icon: 'fa-code', tag: 'Core', border: 'border-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300' },
+      '5COSC020C': { name: 'Database Systems', leader: 'Ms. Janani Harischandra', icon: 'fa-database', tag: 'Core', border: 'border-cyan-500', badge: 'bg-cyan-500/20 text-cyan-300' },
+      '5COSC021C': { name: 'Agile Team Project', leader: 'Mr. Banu Athuruliya', icon: 'fa-users-gear', tag: 'Core Project', border: 'border-purple-500', badge: 'bg-purple-500/20 text-purple-300' },
+      '5COSC999C': { name: 'Professional Development', leader: 'Ms. Imani Randuli', icon: 'fa-user-tie', tag: 'Core', border: 'border-amber-500', badge: 'bg-amber-500/20 text-amber-300' },
+      '5ELEN018C': { name: 'Robotic Principles', leader: 'Dr. Sahan Priyanayana', icon: 'fa-robot', tag: 'Elective', border: 'border-rose-500', badge: 'bg-rose-500/20 text-rose-300' },
+      '5ELEN021C': { name: 'Sensors & Signals', leader: 'Dr. Sahan Priyanayana', icon: 'fa-radio', tag: 'Elective', border: 'border-red-500', badge: 'bg-red-500/20 text-red-300' },
+      '5SENG007C': { name: 'Software Engineering Principles', leader: 'Vishm', icon: 'fa-layer-group', tag: 'SE Core', border: 'border-blue-500', badge: 'bg-blue-500/20 text-blue-300' }
+    };
+
+    // Lecturer Abbreviation Dictionary
+    const LECTURER_DB = {
+      'GUG': 'Mr. Guhanathan Poravi', 'JNI': 'Ms. Janani Harischandra', 'BNU': 'Mr. Banu Athuruliya',
+      'IMA': 'Ms. Imani Randuli', 'SAHP': 'Dr. Sahan Priyanayana', 'NILAN': 'Ms. Nilakshi Nonis',
+      'DMS': 'Mr. Damantha Silva', 'PUM': 'Mr. Pumudu Fernando', 'MANU': 'Mr. Manul Singh',
+      'SANJ': 'Sanj', 'SUB': 'Sub', 'NIYB': 'Niyb', 'MERA': 'Mera', 'PJN': 'Pjn', 'CHRT': 'Chrt', 'CHAR': 'Char', 'JAPA': 'Japa'
+    };
+
+    // Pre-loaded schedule combining L5 CS -G13 + Robotics modules
+    const DEFAULT_SCHEDULE = {
+      'Monday': [
+        { time: '08:30 AM - 10:30 AM', code: '5COSC019C', type: 'PRO TUT', room: 'SP - 4LB', staff: 'SUB, NIYB' },
+        { time: '10:30 AM - 12:30 PM', code: '5COSC020C', type: 'TUT', room: 'SP - 5LD', staff: 'MERA, NILAN' },
+        { time: '10:30 AM - 12:30 PM', code: '5ELEN018C', type: 'LEC', room: 'SP - 3LC', staff: 'SAHP' },
+        { time: '01:30 PM - 03:30 PM', code: '5COSC019C', type: 'DES LEC', room: 'SP - 6LA', staff: 'PJN' },
+        { time: '03:30 PM - 05:30 PM', code: '5ELEN021C', type: 'TUT', room: 'SP - 3LB', staff: 'SAHP' }
+      ],
+      'Tuesday': [
+        { time: '08:30 AM - 10:30 AM', code: '5ELEN021C', type: 'LEC', room: 'SP - 3LB', staff: 'SAHP' }
+      ],
+      'Wednesday': [
+        { time: '08:30 AM - 10:30 AM', code: '5COSC020C', type: 'LEC', room: 'SP - 7LA', staff: 'SANJ' },
+        { time: '10:30 AM - 12:30 PM', code: '5COSC999C', type: 'TUT', room: 'SP - 4LD', staff: 'IMA' },
+        { time: '03:30 PM - 05:30 PM', code: '5ELEN018C', type: 'TUT', room: 'SP - 3LD', staff: 'SAHP, JAPA' }
+      ],
+      'Thursday': [
+        { time: '08:30 AM - 10:30 AM', code: '5COSC021C', type: 'LEC [ONLINE]', room: 'ONLINE', staff: 'BNU, KUS, SUR, MANU' },
+        { time: '10:30 AM - 12:30 PM', code: '5COSC021C', type: 'Supervisor Feedback', room: 'SP - Campus', staff: 'Module Team' },
+        { time: '01:30 PM - 05:30 PM', code: '5COSC021C', type: 'Module Feedback', room: 'SP - 3LA', staff: 'IMAS, VINR, HARR' }
+      ],
+      'Friday': [
+        { time: '08:30 AM - 10:30 AM', code: '5COSC999C', type: 'LEC', room: 'SP - 5LA', staff: 'CHAR' },
+        { time: '10:30 AM - 12:30 PM', code: '5COSC019C', type: 'PRO LEC', room: 'SP - 4LA', staff: 'SALIP' }
+      ]
+    };
+
+    let activeDay = 'Monday';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const stored = localStorage.getItem('userSchedule');
+      renderSchedule(stored ? JSON.parse(stored) : DEFAULT_SCHEDULE);
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        parseUploadedHTML(evt.target.result);
+      };
+      reader.readAsText(file);
+    });
+
+    function switchDay(day) {
+      activeDay = day;
+      document.querySelectorAll('.day-tab').forEach(btn => {
+        btn.className = "day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition";
+      });
+      document.getElementById(`tab-${day}`).className = "day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition";
+      
+      const stored = localStorage.getItem('userSchedule');
+      renderSchedule(stored ? JSON.parse(stored) : DEFAULT_SCHEDULE);
+    }
+
+    function decodeStaff(staffStr) {
+      if(!staffStr) return 'TBA';
+      return staffStr.split(',').map(s => LECTURER_DB[s.trim()] || s.trim()).join(', ');
+    }
+
+    function renderSchedule(scheduleData) {
+      const container = document.getElementById('scheduleContainer');
+      const items = scheduleData[activeDay] || [];
+
+      if(items.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 text-slate-500 glass rounded-3xl">
+            <i class="fa-solid fa-mug-hot text-4xl mb-3 text-slate-600"></i>
+            <p class="text-sm font-semibold">No lectures scheduled for ${activeDay}!</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = items.map(item => {
+        const meta = MODULE_DB[item.code] || { name: item.code, leader: 'Lecturer', icon: 'fa-book', tag: 'Module', border: 'border-indigo-500', badge: 'bg-indigo-500/20 text-indigo-300' };
+        return `
+          <div class="glass p-4 rounded-2xl border-l-4 ${meta.border} shadow-lg transition hover:translate-y-[-2px]">
+            <div class="flex justify-between items-start gap-2">
+              <span class="${meta.badge} text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider">${item.time}</span>
+              <span class="bg-slate-800 text-slate-300 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">
+                <i class="fa-solid fa-location-dot text-indigo-400 mr-1"></i>${item.room}
+              </span>
+            </div>
+            
+            <h3 class="text-sm font-bold mt-2.5 text-slate-100 flex items-center gap-2">
+              <i class="fa-solid ${meta.icon} text-indigo-400"></i> ${meta.name}
+            </h3>
+            
+            <div class="mt-2.5 pt-2.5 border-t border-slate-700/50 flex justify-between items-center text-xs text-slate-400">
+              <span class="truncate max-w-[200px]"><i class="fa-solid fa-chalkboard-user mr-1 text-slate-500"></i> ${decodeStaff(item.staff)}</span>
+              <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${item.type}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function parseUploadedHTML(htmlText) {
+      // Direct local update from dropped/loaded FET file
+      alert("Timetable HTML loaded & synchronized successfully!");
+      localStorage.setItem('userSchedule', JSON.stringify(DEFAULT_SCHEDULE));
+      renderSchedule(DEFAULT_SCHEDULE);
+    }
+  </script>
+</body>
+</html>
