@@ -4,8 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IIT Smart Timetable</title>
-  <!-- PWA Metadata -->
-  <link rel="manifest" href="data:application/json,{\"name\":\"IIT Timetable\",\"short_name\":\"Timetable\",\"start_url\":\".\",\"display\":\"standalone\",\"background_color\":\"#0f172a\",\"theme_color\":\"#6366f1\"}">
+  
+  <!-- PWA Manifest Link -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Timetable">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2693/2693507.png">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -52,23 +59,25 @@
   </div>
 
   <!-- Schedule List Container -->
-  <main class="px-4 space-y-3.5" id="scheduleContainer">
-    <!-- Schedule items rendered here -->
-  </main>
+  <main class="px-4 space-y-3.5" id="scheduleContainer"></main>
 
   <script>
-    // Module ID to Full Name & Icon Dictionary
+    // Register Service Worker for PWA Installation & Offline Support
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed: ', err));
+      });
+    }
+
     const MODULE_DB = {
-      '5COSC019C': { name: 'Object Oriented Programming', leader: 'Mr. Guhanathan Poravi', icon: 'fa-code', tag: 'Core', border: 'border-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300' },
-      '5COSC020C': { name: 'Database Systems', leader: 'Ms. Janani Harischandra', icon: 'fa-database', tag: 'Core', border: 'border-cyan-500', badge: 'bg-cyan-500/20 text-cyan-300' },
-      '5COSC021C': { name: 'Agile Team Project', leader: 'Mr. Banu Athuruliya', icon: 'fa-users-gear', tag: 'Core Project', border: 'border-purple-500', badge: 'bg-purple-500/20 text-purple-300' },
-      '5COSC999C': { name: 'Professional Development', leader: 'Ms. Imani Randuli', icon: 'fa-user-tie', tag: 'Core', border: 'border-amber-500', badge: 'bg-amber-500/20 text-amber-300' },
-      '5ELEN018C': { name: 'Robotic Principles', leader: 'Dr. Sahan Priyanayana', icon: 'fa-robot', tag: 'Elective', border: 'border-rose-500', badge: 'bg-rose-500/20 text-rose-300' },
-      '5ELEN021C': { name: 'Sensors & Signals', leader: 'Dr. Sahan Priyanayana', icon: 'fa-radio', tag: 'Elective', border: 'border-red-500', badge: 'bg-red-500/20 text-red-300' },
-      '5SENG007C': { name: 'Software Engineering Principles', leader: 'Vishm', icon: 'fa-layer-group', tag: 'SE Core', border: 'border-blue-500', badge: 'bg-blue-500/20 text-blue-300' }
+      '5COSC019C': { name: 'Object Oriented Programming', leader: 'Mr. Guhanathan Poravi', icon: 'fa-code', border: 'border-emerald-500', badge: 'bg-emerald-500/20 text-emerald-300' },
+      '5COSC020C': { name: 'Database Systems', leader: 'Ms. Janani Harischandra', icon: 'fa-database', border: 'border-cyan-500', badge: 'bg-cyan-500/20 text-cyan-300' },
+      '5COSC021C': { name: 'Agile Team Project', leader: 'Mr. Banu Athuruliya', icon: 'fa-users-gear', border: 'border-purple-500', badge: 'bg-purple-500/20 text-purple-300' },
+      '5COSC999C': { name: 'Professional Development', leader: 'Ms. Imani Randuli', icon: 'fa-user-tie', border: 'border-amber-500', badge: 'bg-amber-500/20 text-amber-300' },
+      '5ELEN018C': { name: 'Robotic Principles', leader: 'Dr. Sahan Priyanayana', icon: 'fa-robot', border: 'border-rose-500', badge: 'bg-rose-500/20 text-rose-300' },
+      '5ELEN021C': { name: 'Sensors & Signals', leader: 'Dr. Sahan Priyanayana', icon: 'fa-radio', border: 'border-red-500', badge: 'bg-red-500/20 text-red-300' }
     };
 
-    // Lecturer Abbreviation Dictionary
     const LECTURER_DB = {
       'GUG': 'Mr. Guhanathan Poravi', 'JNI': 'Ms. Janani Harischandra', 'BNU': 'Mr. Banu Athuruliya',
       'IMA': 'Ms. Imani Randuli', 'SAHP': 'Dr. Sahan Priyanayana', 'NILAN': 'Ms. Nilakshi Nonis',
@@ -76,7 +85,6 @@
       'SANJ': 'Sanj', 'SUB': 'Sub', 'NIYB': 'Niyb', 'MERA': 'Mera', 'PJN': 'Pjn', 'CHRT': 'Chrt', 'CHAR': 'Char', 'JAPA': 'Japa'
     };
 
-    // Pre-loaded schedule combining L5 CS -G13 + Robotics modules
     const DEFAULT_SCHEDULE = {
       'Monday': [
         { time: '08:30 AM - 10:30 AM', code: '5COSC019C', type: 'PRO TUT', room: 'SP - 4LB', staff: 'SUB, NIYB' },
@@ -111,16 +119,6 @@
       renderSchedule(stored ? JSON.parse(stored) : DEFAULT_SCHEDULE);
     });
 
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        parseUploadedHTML(evt.target.result);
-      };
-      reader.readAsText(file);
-    });
-
     function switchDay(day) {
       activeDay = day;
       document.querySelectorAll('.day-tab').forEach(btn => {
@@ -151,7 +149,7 @@
       }
 
       container.innerHTML = items.map(item => {
-        const meta = MODULE_DB[item.code] || { name: item.code, leader: 'Lecturer', icon: 'fa-book', tag: 'Module', border: 'border-indigo-500', badge: 'bg-indigo-500/20 text-indigo-300' };
+        const meta = MODULE_DB[item.code] || { name: item.code, leader: 'Lecturer', icon: 'fa-book', border: 'border-indigo-500', badge: 'bg-indigo-500/20 text-indigo-300' };
         return `
           <div class="glass p-4 rounded-2xl border-l-4 ${meta.border} shadow-lg transition hover:translate-y-[-2px]">
             <div class="flex justify-between items-start gap-2">
@@ -172,13 +170,6 @@
           </div>
         `;
       }).join('');
-    }
-
-    function parseUploadedHTML(htmlText) {
-      // Direct local update from dropped/loaded FET file
-      alert("Timetable HTML loaded & synchronized successfully!");
-      localStorage.setItem('userSchedule', JSON.stringify(DEFAULT_SCHEDULE));
-      renderSchedule(DEFAULT_SCHEDULE);
     }
   </script>
 </body>
