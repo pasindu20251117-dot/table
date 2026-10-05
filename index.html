@@ -3,21 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IIT Smart Timetable</title>
-  
-  <!-- PWA Manifest Link -->
+  <title>IIT Timetable Hub</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#6366f1">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Timetable">
+  <meta name="apple-mobile-web-app-title" content="IIT Timetable">
   <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2693/2693507.png">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-    .glass { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
@@ -25,31 +23,48 @@
 <body class="pb-16 max-w-md mx-auto min-h-screen border-x border-slate-800">
 
   <!-- Header -->
-  <header class="p-4 glass sticky top-0 z-50 flex justify-between items-center border-b border-slate-700">
-    <div class="flex items-center space-x-3">
-      <div class="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/30">
-        <i class="fa-solid fa-calendar-week text-xl"></i>
+  <header class="p-4 glass sticky top-0 z-50 border-b border-slate-700">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-graduation-cap text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold leading-tight" id="headerTitle">IIT Timetable</h1>
+          <p class="text-xs text-indigo-400 font-medium" id="headerSub">Select your group below</p>
+        </div>
       </div>
-      <div>
-        <h1 class="text-base font-bold leading-tight">My Timetable</h1>
-        <p class="text-xs text-indigo-400 font-medium">L5 CS - Group 13 + Robotics</p>
+      
+      <div class="flex items-center space-x-2">
+        <button onclick="toggleSettingsModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl border border-slate-700 transition" title="Change Group & Electives">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+        <a href="https://drive.google.com/file/d/1CzULxeSQeasZijoCVXykWQAKuM1UZ_23/view?usp=drive_link" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl border border-slate-700 transition" title="Open Google Drive">
+          <i class="fa-brands fa-google-drive"></i>
+        </a>
+        <label class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 font-semibold shadow-lg shadow-indigo-600/30 transition">
+          <i class="fa-solid fa-file-arrow-up"></i> Sync
+          <input type="file" id="fileInput" accept=".html,.htm" class="hidden">
+        </label>
       </div>
     </div>
-    
-    <div class="flex items-center space-x-2">
-      <!-- Direct Drive SSO Link -->
-      <a href="https://drive.google.com/file/d/1CzULxeSQeasZijoCVXykWQAKuM1UZ_23/view?usp=drive_link" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl border border-slate-700 transition" title="Open Google Drive">
-        <i class="fa-brands fa-google-drive"></i>
-      </a>
-      <!-- Sync Upload Button -->
-      <label class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-2.5 rounded-xl cursor-pointer flex items-center gap-1.5 font-semibold shadow-lg shadow-indigo-600/30 transition">
-        <i class="fa-solid fa-file-arrow-up"></i> Sync
-        <input type="file" id="fileInput" accept=".html,.htm" class="hidden">
-      </label>
+
+    <!-- Live Sync Status Banner -->
+    <div class="mt-3 pt-2.5 border-t border-slate-700/60 flex justify-between items-center text-[11px]">
+      <span class="text-slate-400 flex items-center gap-1.5 font-medium">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        Timetable Status:
+      </span>
+      <span id="lastUpdatedBadge" class="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+        Updated just now
+      </span>
     </div>
   </header>
 
-  <!-- Day Selector Tabs -->
+  <!-- Day Selector Bar -->
   <div class="p-4 overflow-x-auto flex space-x-2 no-scrollbar" id="dayPicker">
     <button onclick="switchDay('Monday')" id="tab-Monday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition">Mon</button>
     <button onclick="switchDay('Tuesday')" id="tab-Tuesday" class="day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">Tue</button>
@@ -61,11 +76,60 @@
   <!-- Schedule List Container -->
   <main class="px-4 space-y-3.5" id="scheduleContainer"></main>
 
+  <!-- Settings / Group Selection Modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass w-full max-w-sm rounded-3xl p-6 border border-slate-700 space-y-5 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-700/60 pb-3">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-user-gear text-indigo-400"></i> Profile Setup
+        </h2>
+        <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Course Stream -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Degree Stream</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="setStream('CS')" id="btnStreamCS" class="py-2.5 rounded-xl font-bold text-xs border border-indigo-500 bg-indigo-600/30 text-indigo-200">BSc (Hons) CS</button>
+          <button type="button" onclick="setStream('SE')" id="btnStreamSE" class="py-2.5 rounded-xl font-bold text-xs border border-slate-700 bg-slate-800 text-slate-400">BEng (Hons) SE</button>
+        </div>
+      </div>
+
+      <!-- Group Picker -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Allocated Group</label>
+        <select id="groupSelect" onchange="saveUserProfile()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-indigo-500"></select>
+      </div>
+
+      <!-- Optional Extra Modules -->
+      <div>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Additional Electives</label>
+        <div class="space-y-2 text-xs">
+          <label class="flex items-center space-x-3 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60 cursor-pointer">
+            <input type="checkbox" id="chkRobotics" onchange="saveUserProfile()" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+            <span class="text-slate-200 font-medium">🤖 Robotic Principles & Sensors</span>
+          </label>
+          <label class="flex items-center space-x-3 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60 cursor-pointer">
+            <input type="checkbox" id="chkAdvancedClient" onchange="saveUserProfile()" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+            <span class="text-slate-200 font-medium">💻 Advanced Client-side Dev</span>
+          </label>
+          <label class="flex items-center space-x-3 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60 cursor-pointer">
+            <input type="checkbox" id="chkHCI" onchange="saveUserProfile()" class="rounded border-slate-700 text-indigo-600 focus:ring-0">
+            <span class="text-slate-200 font-medium">🎨 HCI & UX</span>
+          </label>
+        </div>
+      </div>
+
+      <button onclick="toggleSettingsModal()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+        Apply Settings
+      </button>
+    </div>
+  </div>
+
   <script>
-    // Register Service Worker for PWA Installation & Offline Support
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed: ', err));
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW reg error: ', err));
       });
     }
 
@@ -75,49 +139,110 @@
       '5COSC021C': { name: 'Agile Team Project', leader: 'Mr. Banu Athuruliya', icon: 'fa-users-gear', border: 'border-purple-500', badge: 'bg-purple-500/20 text-purple-300' },
       '5COSC999C': { name: 'Professional Development', leader: 'Ms. Imani Randuli', icon: 'fa-user-tie', border: 'border-amber-500', badge: 'bg-amber-500/20 text-amber-300' },
       '5ELEN018C': { name: 'Robotic Principles', leader: 'Dr. Sahan Priyanayana', icon: 'fa-robot', border: 'border-rose-500', badge: 'bg-rose-500/20 text-rose-300' },
-      '5ELEN021C': { name: 'Sensors & Signals', leader: 'Dr. Sahan Priyanayana', icon: 'fa-radio', border: 'border-red-500', badge: 'bg-red-500/20 text-red-300' }
+      '5ELEN021C': { name: 'Sensors & Signals', leader: 'Dr. Sahan Priyanayana', icon: 'fa-radio', border: 'border-red-500', badge: 'bg-red-500/20 text-red-300' },
+      '5COSC026C': { name: 'Advanced Client-side Dev', leader: 'Ms. Nilakshi Nonis', icon: 'fa-desktop', border: 'border-blue-500', badge: 'bg-blue-500/20 text-blue-300' },
+      '5COSC025C': { name: 'HCI & User Experience', leader: 'Mr. Damantha Silva', icon: 'fa-palette', border: 'border-pink-500', badge: 'bg-pink-500/20 text-pink-300' }
     };
 
     const LECTURER_DB = {
       'GUG': 'Mr. Guhanathan Poravi', 'JNI': 'Ms. Janani Harischandra', 'BNU': 'Mr. Banu Athuruliya',
       'IMA': 'Ms. Imani Randuli', 'SAHP': 'Dr. Sahan Priyanayana', 'NILAN': 'Ms. Nilakshi Nonis',
-      'DMS': 'Mr. Damantha Silva', 'PUM': 'Mr. Pumudu Fernando', 'MANU': 'Mr. Manul Singh',
-      'SANJ': 'Sanj', 'SUB': 'Sub', 'NIYB': 'Niyb', 'MERA': 'Mera', 'PJN': 'Pjn', 'CHRT': 'Chrt', 'CHAR': 'Char', 'JAPA': 'Japa'
+      'DMS': 'Mr. Damantha Silva', 'PUM': 'Mr. Pumudu Fernando', 'MANU': 'Mr. Manul Singh'
     };
 
-    const DEFAULT_SCHEDULE = {
-      'Monday': [
-        { time: '08:30 AM - 10:30 AM', code: '5COSC019C', type: 'PRO TUT', room: 'SP - 4LB', staff: 'SUB, NIYB' },
-        { time: '10:30 AM - 12:30 PM', code: '5COSC020C', type: 'TUT', room: 'SP - 5LD', staff: 'MERA, NILAN' },
-        { time: '10:30 AM - 12:30 PM', code: '5ELEN018C', type: 'LEC', room: 'SP - 3LC', staff: 'SAHP' },
-        { time: '01:30 PM - 03:30 PM', code: '5COSC019C', type: 'DES LEC', room: 'SP - 6LA', staff: 'PJN' },
-        { time: '03:30 PM - 05:30 PM', code: '5ELEN021C', type: 'TUT', room: 'SP - 3LB', staff: 'SAHP' }
-      ],
-      'Tuesday': [
-        { time: '08:30 AM - 10:30 AM', code: '5ELEN021C', type: 'LEC', room: 'SP - 3LB', staff: 'SAHP' }
-      ],
-      'Wednesday': [
-        { time: '08:30 AM - 10:30 AM', code: '5COSC020C', type: 'LEC', room: 'SP - 7LA', staff: 'SANJ' },
-        { time: '10:30 AM - 12:30 PM', code: '5COSC999C', type: 'TUT', room: 'SP - 4LD', staff: 'IMA' },
-        { time: '03:30 PM - 05:30 PM', code: '5ELEN018C', type: 'TUT', room: 'SP - 3LD', staff: 'SAHP, JAPA' }
-      ],
-      'Thursday': [
-        { time: '08:30 AM - 10:30 AM', code: '5COSC021C', type: 'LEC [ONLINE]', room: 'ONLINE', staff: 'BNU, KUS, SUR, MANU' },
-        { time: '10:30 AM - 12:30 PM', code: '5COSC021C', type: 'Supervisor Feedback', room: 'SP - Campus', staff: 'Module Team' },
-        { time: '01:30 PM - 05:30 PM', code: '5COSC021C', type: 'Module Feedback', room: 'SP - 3LA', staff: 'IMAS, VINR, HARR' }
-      ],
-      'Friday': [
-        { time: '08:30 AM - 10:30 AM', code: '5COSC999C', type: 'LEC', room: 'SP - 5LA', staff: 'CHAR' },
-        { time: '10:30 AM - 12:30 PM', code: '5COSC019C', type: 'PRO LEC', room: 'SP - 4LA', staff: 'SALIP' }
-      ]
-    };
-
+    let userProfile = { stream: 'CS', group: 'L5 CS -G13', robotics: true, clientSide: false, hci: false };
     let activeDay = 'Monday';
 
     document.addEventListener('DOMContentLoaded', () => {
-      const stored = localStorage.getItem('userSchedule');
-      renderSchedule(stored ? JSON.parse(stored) : DEFAULT_SCHEDULE);
+      const saved = localStorage.getItem('iitUserProfile');
+      if (saved) { userProfile = JSON.parse(saved); }
+      populateGroupSelect();
+      updateHeader();
+      updateSyncTimeDisplay();
+      renderSchedule();
+
+      // Refresh relative time display every 30 seconds
+      setInterval(updateSyncTimeDisplay, 30000);
     });
+
+    // File input change handler to sync new HTML file
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const now = new Date().toISOString();
+      localStorage.setItem('iitLastSyncTime', now);
+      updateSyncTimeDisplay();
+      alert("Timetable updated successfully!");
+    });
+
+    function getRelativeTimeString(timestamp) {
+      if (!timestamp) return 'Updated recently';
+      const now = new Date();
+      const past = new Date(timestamp);
+      const diffInSeconds = Math.floor((now - past) / 1000);
+
+      if (diffInSeconds < 60) return 'Updated just now';
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      if (diffInMinutes < 60) return `Updated ${diffInMinutes} min${diffInMinutes > 1 ? 's' : ''} ago`;
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) return `Updated ${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `Updated ${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    }
+
+    function updateSyncTimeDisplay() {
+      const lastSync = localStorage.getItem('iitLastSyncTime');
+      document.getElementById('lastUpdatedBadge').innerText = getRelativeTimeString(lastSync);
+    }
+
+    function toggleSettingsModal() {
+      document.getElementById('settingsModal').classList.toggle('hidden');
+    }
+
+    function setStream(stream) {
+      userProfile.stream = stream;
+      userProfile.group = stream === 'CS' ? 'L5 CS -G13' : 'L5 SE -G1';
+      document.getElementById('btnStreamCS').className = stream === 'CS' ? "py-2.5 rounded-xl font-bold text-xs border border-indigo-500 bg-indigo-600/30 text-indigo-200" : "py-2.5 rounded-xl font-bold text-xs border border-slate-700 bg-slate-800 text-slate-400";
+      document.getElementById('btnStreamSE').className = stream === 'SE' ? "py-2.5 rounded-xl font-bold text-xs border border-indigo-500 bg-indigo-600/30 text-indigo-200" : "py-2.5 rounded-xl font-bold text-xs border border-slate-700 bg-slate-800 text-slate-400";
+      populateGroupSelect();
+      saveUserProfile();
+    }
+
+    function populateGroupSelect() {
+      const sel = document.getElementById('groupSelect');
+      sel.innerHTML = '';
+      const count = userProfile.stream === 'CS' ? 16 : 4;
+      const prefix = userProfile.stream === 'CS' ? 'L5 CS -G' : 'L5 SE -G';
+      
+      for(let i=1; i<=count; i++) {
+        const val = `${prefix}${i}`;
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.innerText = val;
+        if(val === userProfile.group) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      document.getElementById('chkRobotics').checked = userProfile.robotics;
+      document.getElementById('chkAdvancedClient').checked = userProfile.clientSide;
+      document.getElementById('chkHCI').checked = userProfile.hci;
+    }
+
+    function saveUserProfile() {
+      userProfile.group = document.getElementById('groupSelect').value;
+      userProfile.robotics = document.getElementById('chkRobotics').checked;
+      userProfile.clientSide = document.getElementById('chkAdvancedClient').checked;
+      userProfile.hci = document.getElementById('chkHCI').checked;
+      localStorage.setItem('iitUserProfile', JSON.stringify(userProfile));
+      updateHeader();
+      renderSchedule();
+    }
+
+    function updateHeader() {
+      document.getElementById('headerTitle').innerText = userProfile.group;
+      document.getElementById('headerSub').innerText = `${userProfile.stream} Stream • Timetable`;
+    }
 
     function switchDay(day) {
       activeDay = day;
@@ -125,9 +250,7 @@
         btn.className = "day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition";
       });
       document.getElementById(`tab-${day}`).className = "day-tab px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition";
-      
-      const stored = localStorage.getItem('userSchedule');
-      renderSchedule(stored ? JSON.parse(stored) : DEFAULT_SCHEDULE);
+      renderSchedule();
     }
 
     function decodeStaff(staffStr) {
@@ -135,9 +258,33 @@
       return staffStr.split(',').map(s => LECTURER_DB[s.trim()] || s.trim()).join(', ');
     }
 
-    function renderSchedule(scheduleData) {
+    function renderSchedule() {
       const container = document.getElementById('scheduleContainer');
-      const items = scheduleData[activeDay] || [];
+      
+      let items = [
+        { day: 'Monday', time: '08:30 AM - 10:30 AM', code: '5COSC019C', type: 'PRO TUT', room: 'SP - 4LB', staff: 'SUB, NIYB' },
+        { day: 'Monday', time: '10:30 AM - 12:30 PM', code: '5COSC020C', type: 'TUT', room: 'SP - 5LD', staff: 'MERA, NILAN' },
+        { day: 'Monday', time: '10:30 AM - 12:30 PM', code: '5ELEN018C', type: 'LEC', room: 'SP - 3LC', staff: 'SAHP', isExtra: true },
+        { day: 'Monday', time: '01:30 PM - 03:30 PM', code: '5COSC019C', type: 'DES LEC', room: 'SP - 6LA', staff: 'PJN' },
+        { day: 'Monday', time: '03:30 PM - 05:30 PM', code: '5ELEN021C', type: 'TUT', room: 'SP - 3LB', staff: 'SAHP', isExtra: true },
+        
+        { day: 'Tuesday', time: '08:30 AM - 10:30 AM', code: '5ELEN021C', type: 'LEC', room: 'SP - 3LB', staff: 'SAHP', isExtra: true },
+        
+        { day: 'Wednesday', time: '08:30 AM - 10:30 AM', code: '5COSC020C', type: 'LEC', room: 'SP - 7LA', staff: 'SANJ' },
+        { day: 'Wednesday', time: '10:30 AM - 12:30 PM', code: '5COSC999C', type: 'TUT', room: 'SP - 4LD', staff: 'IMA' },
+        { day: 'Wednesday', time: '03:30 PM - 05:30 PM', code: '5ELEN018C', type: 'TUT', room: 'SP - 3LD', staff: 'SAHP, JAPA', isExtra: true },
+        
+        { day: 'Thursday', time: '08:30 AM - 10:30 AM', code: '5COSC021C', type: 'LEC [ONLINE]', room: 'ONLINE', staff: 'BNU, KUS, SUR, MANU' },
+        { day: 'Thursday', time: '10:30 AM - 12:30 PM', code: '5COSC021C', type: 'Supervisor Feedback', room: 'SP - Campus', staff: 'Module Team' },
+        { day: 'Thursday', time: '01:30 PM - 05:30 PM', code: '5COSC021C', type: 'Module Feedback', room: 'SP - 3LA', staff: 'IMAS, VINR, HARR' },
+        
+        { day: 'Friday', time: '08:30 AM - 10:30 AM', code: '5COSC999C', type: 'LEC', room: 'SP - 5LA', staff: 'CHAR' },
+        { day: 'Friday', time: '10:30 AM - 12:30 PM', code: '5COSC019C', type: 'PRO LEC', room: 'SP - 4LA', staff: 'SALIP' }
+      ].filter(x => x.day === activeDay);
+
+      if (!userProfile.robotics) {
+        items = items.filter(x => x.code !== '5ELEN018C' && x.code !== '5ELEN021C');
+      }
 
       if(items.length === 0) {
         container.innerHTML = `
