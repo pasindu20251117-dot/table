@@ -1,7 +1,7 @@
 {
-  "name": "IIT Smart Timetable",
-  "short_name": "Timetable",
-  "description": "Custom Timetable for L5 CS Group 13 & Robotics",
+  "name": "IIT Timetable Hub",
+  "short_name": "IIT Schedule",
+  "description": "Multi-group Timetable App for IIT CS & SE Students",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
