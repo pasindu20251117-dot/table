@@ -141,7 +141,8 @@
       '5ELEN018C': { name: 'Robotic Principles', leader: 'Dr. Sahan Priyanayana', icon: 'fa-robot', border: 'border-rose-500', badge: 'bg-rose-500/20 text-rose-300' },
       '5ELEN021C': { name: 'Sensors & Signals', leader: 'Dr. Sahan Priyanayana', icon: 'fa-radio', border: 'border-red-500', badge: 'bg-red-500/20 text-red-300' },
       '5COSC026C': { name: 'Advanced Client-side Dev', leader: 'Ms. Nilakshi Nonis', icon: 'fa-desktop', border: 'border-blue-500', badge: 'bg-blue-500/20 text-blue-300' },
-      '5COSC025C': { name: 'HCI & User Experience', leader: 'Mr. Damantha Silva', icon: 'fa-palette', border: 'border-pink-500', badge: 'bg-pink-500/20 text-pink-300' }
+      '5COSC025C': { name: 'HCI & User Experience', leader: 'Mr. Damantha Silva', icon: 'fa-palette', border: 'border-pink-500', badge: 'bg-pink-500/20 text-pink-300' },
+      '5SENG007C': { name: 'Software Engineering Principles', leader: 'Vishm', icon: 'fa-layer-group', border: 'border-indigo-500', badge: 'bg-indigo-500/20 text-indigo-300' }
     };
 
     const LECTURER_DB = {
@@ -161,20 +162,100 @@
       updateSyncTimeDisplay();
       renderSchedule();
 
-      // Refresh relative time display every 30 seconds
       setInterval(updateSyncTimeDisplay, 30000);
     });
 
-    // File input change handler to sync new HTML file
+    // CONTROLLER: Parsing logic for uploaded FET HTML files
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
-      
-      const now = new Date().toISOString();
-      localStorage.setItem('iitLastSyncTime', now);
-      updateSyncTimeDisplay();
-      alert("Timetable updated successfully!");
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        parseUploadedFETHTML(evt.target.result);
+      };
+      reader.readAsText(file);
     });
+
+    function parseUploadedFETHTML(htmlText) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        const tables = doc.querySelectorAll('table');
+        const parsedData = {};
+
+        tables.forEach(table => {
+          const caption = table.querySelector('caption');
+          if (!caption) return;
+          const groupName = caption.textContent.replace('Informatics Institute of Technology', '').trim();
+          if (!groupName) return;
+
+          const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+          const rows = table.querySelectorAll('tr');
+          const groupSched = { 'Monday': [], 'Tuesday': [], 'Wednesday': [], 'Thursday': [], 'Friday': [] };
+
+          rows.forEach(row => {
+            const timeTh = row.querySelector('th.yAxis');
+            if (!timeTh) return;
+            const timeSlot = timeTh.textContent.trim();
+            const tds = row.querySelectorAll('td');
+
+            tds.forEach((td, dayIdx) => {
+              if (dayIdx >= 5) return;
+              const text = td.textContent.trim();
+              if (text && text !== '---') {
+                const dayName = days[dayIdx];
+                const codeMatch = text.match(/([0-9][A-Z0-9]{8,9})/);
+                const code = codeMatch ? codeMatch[1] : 'OTHER';
+
+                let room = 'Campus';
+                if (text.includes('ONLINE')) room = 'ONLINE';
+                else {
+                  const roomMatch = text.match(/SP\s*-\s*[A-Z0-9]+/i);
+                  if (roomMatch) room = roomMatch[0];
+                }
+
+                let type = 'Session';
+                if (text.includes('LEC')) type = 'Lecture';
+                else if (text.includes('TUT')) type = 'Tutorial';
+                else if (text.toLowerCase().includes('feedback')) type = 'Feedback';
+
+                const timeMatch = text.match(/\[([0-9]{1,2}\.[0-9]{2}(?:am\vert{}pm)?\s*-\s*[0-9]{1,2}\.[0-9]{2}(?:am\vert{}pm)?)\]/i);
+                const timeRange = timeMatch ? timeMatch[1] : timeSlot;
+
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                let staff = 'TBA';
+                if (lines.length >= 2) {
+                  staff = lines[lines.length - 2];
+                  if (staff.startsWith('SP -') || staff.includes('ONLINE')) {
+                    staff = lines[lines.length - 3] || 'TBA';
+                  }
+                }
+
+                groupSched[dayName].push({
+                  time: timeRange,
+                  code: code,
+                  type: type,
+                  room: room,
+                  staff: staff
+                });
+              }
+            });
+          });
+
+          parsedData[groupName] = groupSched;
+        });
+
+        localStorage.setItem('parsedFETData', JSON.stringify(parsedData));
+        const now = new Date().toISOString();
+        localStorage.setItem('iitLastSyncTime', now);
+        updateSyncTimeDisplay();
+        alert('New timetable synced successfully!');
+        renderSchedule();
+      } catch (err) {
+        alert('Error parsing timetable: ' + err.message);
+      }
+    }
 
     function getRelativeTimeString(timestamp) {
       if (!timestamp) return 'Updated recently';
@@ -260,30 +341,43 @@
 
     function renderSchedule() {
       const container = document.getElementById('scheduleContainer');
+      const parsedData = JSON.parse(localStorage.getItem('parsedFETData') || '{}');
       
-      let items = [
-        { day: 'Monday', time: '08:30 AM - 10:30 AM', code: '5COSC019C', type: 'PRO TUT', room: 'SP - 4LB', staff: 'SUB, NIYB' },
-        { day: 'Monday', time: '10:30 AM - 12:30 PM', code: '5COSC020C', type: 'TUT', room: 'SP - 5LD', staff: 'MERA, NILAN' },
-        { day: 'Monday', time: '10:30 AM - 12:30 PM', code: '5ELEN018C', type: 'LEC', room: 'SP - 3LC', staff: 'SAHP', isExtra: true },
-        { day: 'Monday', time: '01:30 PM - 03:30 PM', code: '5COSC019C', type: 'DES LEC', room: 'SP - 6LA', staff: 'PJN' },
-        { day: 'Monday', time: '03:30 PM - 05:30 PM', code: '5ELEN021C', type: 'TUT', room: 'SP - 3LB', staff: 'SAHP', isExtra: true },
-        
-        { day: 'Tuesday', time: '08:30 AM - 10:30 AM', code: '5ELEN021C', type: 'LEC', room: 'SP - 3LB', staff: 'SAHP', isExtra: true },
-        
-        { day: 'Wednesday', time: '08:30 AM - 10:30 AM', code: '5COSC020C', type: 'LEC', room: 'SP - 7LA', staff: 'SANJ' },
-        { day: 'Wednesday', time: '10:30 AM - 12:30 PM', code: '5COSC999C', type: 'TUT', room: 'SP - 4LD', staff: 'IMA' },
-        { day: 'Wednesday', time: '03:30 PM - 05:30 PM', code: '5ELEN018C', type: 'TUT', room: 'SP - 3LD', staff: 'SAHP, JAPA', isExtra: true },
-        
-        { day: 'Thursday', time: '08:30 AM - 10:30 AM', code: '5COSC021C', type: 'LEC [ONLINE]', room: 'ONLINE', staff: 'BNU, KUS, SUR, MANU' },
-        { day: 'Thursday', time: '10:30 AM - 12:30 PM', code: '5COSC021C', type: 'Supervisor Feedback', room: 'SP - Campus', staff: 'Module Team' },
-        { day: 'Thursday', time: '01:30 PM - 05:30 PM', code: '5COSC021C', type: 'Module Feedback', room: 'SP - 3LA', staff: 'IMAS, VINR, HARR' },
-        
-        { day: 'Friday', time: '08:30 AM - 10:30 AM', code: '5COSC999C', type: 'LEC', room: 'SP - 5LA', staff: 'CHAR' },
-        { day: 'Friday', time: '10:30 AM - 12:30 PM', code: '5COSC019C', type: 'PRO LEC', room: 'SP - 4LA', staff: 'SALIP' }
-      ].filter(x => x.day === activeDay);
+      let items = [];
+      const currentGroupData = parsedData[userProfile.group];
 
-      if (!userProfile.robotics) {
-        items = items.filter(x => x.code !== '5ELEN018C' && x.code !== '5ELEN021C');
+      if (currentGroupData && currentGroupData[activeDay]) {
+        items = [...currentGroupData[activeDay]];
+      } else {
+        // Fallback default sample data
+        items = [
+          { day: 'Monday', time: '08:30 AM - 10:30 AM', code: '5COSC019C', type: 'PRO TUT', room: 'SP - 4LB', staff: 'SUB, NIYB' },
+          { day: 'Monday', time: '10:30 AM - 12:30 PM', code: '5COSC020C', type: 'TUT', room: 'SP - 5LD', staff: 'MERA, NILAN' },
+          { day: 'Monday', time: '10:30 AM - 12:30 PM', code: '5ELEN018C', type: 'LEC', room: 'SP - 3LC', staff: 'SAHP' },
+          { day: 'Monday', time: '01:30 PM - 03:30 PM', code: '5COSC019C', type: 'DES LEC', room: 'SP - 6LA', staff: 'PJN' },
+          { day: 'Monday', time: '03:30 PM - 05:30 PM', code: '5ELEN021C', type: 'TUT', room: 'SP - 3LB', staff: 'SAHP' },
+          { day: 'Tuesday', time: '08:30 AM - 10:30 AM', code: '5ELEN021C', type: 'LEC', room: 'SP - 3LB', staff: 'SAHP' },
+          { day: 'Wednesday', time: '08:30 AM - 10:30 AM', code: '5COSC020C', type: 'LEC', room: 'SP - 7LA', staff: 'SANJ' },
+          { day: 'Wednesday', time: '10:30 AM - 12:30 PM', code: '5COSC999C', type: 'TUT', room: 'SP - 4LD', staff: 'IMA' },
+          { day: 'Wednesday', time: '03:30 PM - 05:30 PM', code: '5ELEN018C', type: 'TUT', room: 'SP - 3LD', staff: 'SAHP, JAPA' },
+          { day: 'Thursday', time: '08:30 AM - 10:30 AM', code: '5COSC021C', type: 'LEC [ONLINE]', room: 'ONLINE', staff: 'BNU, KUS, SUR, MANU' },
+          { day: 'Thursday', time: '10:30 AM - 12:30 PM', code: '5COSC021C', type: 'Supervisor Feedback', room: 'SP - Campus', staff: 'Module Team' },
+          { day: 'Thursday', time: '01:30 PM - 05:30 PM', code: '5COSC021C', type: 'Module Feedback', room: 'SP - 3LA', staff: 'IMAS, VINR, HARR' },
+          { day: 'Friday', time: '08:30 AM - 10:30 AM', code: '5COSC999C', type: 'LEC', room: 'SP - 5LA', staff: 'CHAR' },
+          { day: 'Friday', time: '10:30 AM - 12:30 PM', code: '5COSC019C', type: 'PRO LEC', room: 'SP - 4LA', staff: 'SALIP' }
+        ].filter(x => x.day === activeDay);
+      }
+
+      // Merge robotics sessions if toggle is enabled
+      if (userProfile.robotics && userProfile.group !== 'L5 CS -G9' && userProfile.group !== 'L5 CS -G16') {
+        if (activeDay === 'Monday') {
+          items.push({ time: '10:30 AM - 12:30 PM', code: '5ELEN018C', type: 'LEC', room: 'SP - 3LC', staff: 'SAHP' });
+          items.push({ time: '03:30 PM - 05:30 PM', code: '5ELEN021C', type: 'TUT', room: 'SP - 3LB', staff: 'SAHP' });
+        } else if (activeDay === 'Tuesday') {
+          items.push({ time: '08:30 AM - 10:30 AM', code: '5ELEN021C', type: 'LEC', room: 'SP - 3LB', staff: 'SAHP' });
+        } else if (activeDay === 'Wednesday') {
+          items.push({ time: '03:30 PM - 05:30 PM', code: '5ELEN018C', type: 'TUT', room: 'SP - 3LD', staff: 'SAHP, JAPA' });
+        }
       }
 
       if(items.length === 0) {
